@@ -26,7 +26,7 @@
 from __future__ import absolute_import
 from builtins import str
 from builtins import range
-
+import datetime
 import msgpack
 import gevent.pool
 import gevent.queue
@@ -35,7 +35,6 @@ import gevent.local
 import gevent.lock
 import logging
 import sys
-
 from . import gevent_zmq as zmq
 from .exceptions import TimeoutExpired
 from .context import Context
@@ -168,12 +167,6 @@ def decode_datetime(obj):
         obj = datetime.datetime.strptime(obj["as_str"], "%Y%m%dT%H:%M:%S.%f")
     return obj
 
-def encode_datetime(obj):
-    if isinstance(obj, datetime.datetime):
-        return {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f")}
-
-    return obj
-
 class Event(object):
 
     __slots__ = ['_name', '_args', '_header', '_identity']
@@ -190,6 +183,12 @@ class Event(object):
         else:
             self._header = header
         self._identity = None
+
+    def encode_datetime(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f")}
+        return obj
+
 
     @property
     def header(self):
@@ -217,16 +216,16 @@ class Event(object):
 
     def pack(self):
         payload = (self._header, self._name, self._args)
-        #r = msgpack.Packer(use_bin_type=True).pack(payload, default=encode_datetime)
-        r = msgpack.packb(payload, default=encode_datetime)
+        #r = msgpack.Packer(use_bin_type=True).pack(payload, default=self.encode_datetime)
+        r = msgpack.packb(payload, default=self.encode_datetime)
         return r
 
     @staticmethod
     def unpack(blob):
-        #unpacker = msgpack.Unpacker(encoding='utf-8')
-        #unpacker.feed(blob)
-        #unpacked_msg = unpacker.unpack(object_hook=decode_datetime)
-        unpacked_msg = msgpack.packb(blob, object_hook=decode_datetime)
+        unpacker = msgpack.Unpacker(encoding='utf-8', object_hook=decode_datetime)
+        unpacker.feed(blob)
+        unpacked_msg = unpacker.unpack()
+        #unpacked_msg = msgpack.unpackb(blob, object_hook=decode_datetime)
 
         try:
             (header, name, args) = unpacked_msg
