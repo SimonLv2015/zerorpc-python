@@ -27,15 +27,18 @@ from __future__ import absolute_import
 import gevent
 
 import zerorpc
-from .testutils import teardown, random_ipc_endpoint
-
+from testutils import teardown, random_ipc_endpoint
+import datetime 
 def test_client_connect():
     endpoint = random_ipc_endpoint()
 
     class MySrv(zerorpc.Server):
 
         def lolita(self):
-            return 42
+            return 42#datetime.datetime.now()
+
+        def time_test(self):
+            return datetime.datetime.now()
 
     srv = MySrv()
     srv.bind(endpoint)
@@ -43,7 +46,7 @@ def test_client_connect():
 
     client = zerorpc.Client()
     client.connect(endpoint)
-
+    client.time_test()
     assert client.lolita() == 42
 
 def test_client_quick_connect():
@@ -52,12 +55,17 @@ def test_client_quick_connect():
     class MySrv(zerorpc.Server):
 
         def lolita(self):
-            return 42
+            return 42#datetime.datetime.now()
+        def test_time(self):
+            return datetime.datetime.now()
 
     srv = MySrv()
     srv.bind(endpoint)
     gevent.spawn(srv.run)
 
     client = zerorpc.Client(endpoint)
-
+    client.test_time()
     assert client.lolita() == 42
+
+
+test_client_quick_connect()

@@ -217,14 +217,16 @@ class Event(object):
 
     def pack(self):
         payload = (self._header, self._name, self._args)
-        r = msgpack.Packer(use_bin_type=True).pack(payload, default=encode_datetime)
+        #r = msgpack.Packer(use_bin_type=True).pack(payload, default=encode_datetime)
+        r = msgpack.packb(payload, default=encode_datetime)
         return r
 
     @staticmethod
     def unpack(blob):
-        unpacker = msgpack.Unpacker(encoding='utf-8')
-        unpacker.feed(blob)
-        unpacked_msg = unpacker.unpack(object_hook=decode_datetime)
+        #unpacker = msgpack.Unpacker(encoding='utf-8')
+        #unpacker.feed(blob)
+        #unpacked_msg = unpacker.unpack(object_hook=decode_datetime)
+        unpacked_msg = msgpack.packb(blob, object_hook=decode_datetime)
 
         try:
             (header, name, args) = unpacked_msg
