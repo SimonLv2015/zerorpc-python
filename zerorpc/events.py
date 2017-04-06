@@ -161,6 +161,18 @@ class Receiver(SequentialReceiver):
         except gevent.queue.Empty:
             raise TimeoutExpired(timeout)
 
+#define custom datetime pack unpack function
+
+def decode_datetime(obj):
+    if b'__datetime__' in obj:
+        obj = datetime.datetime.strptime(obj["as_str"], "%Y%m%dT%H:%M:%S.%f")
+    return obj
+
+def encode_datetime(obj):
+    if isinstance(obj, datetime.datetime):
+        return {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f")}
+
+    return obj
 
 class Event(object):
 
@@ -205,14 +217,14 @@ class Event(object):
 
     def pack(self):
         payload = (self._header, self._name, self._args)
-        r = msgpack.Packer(use_bin_type=True).pack(payload)
+        r = msgpack.Packer(use_bin_type=True).pack(payload, default=encode_datetime)
         return r
 
     @staticmethod
     def unpack(blob):
         unpacker = msgpack.Unpacker(encoding='utf-8')
         unpacker.feed(blob)
-        unpacked_msg = unpacker.unpack()
+        unpacked_msg = unpacker.unpack(object_hook=decode_datetime)
 
         try:
             (header, name, args) = unpacked_msg
